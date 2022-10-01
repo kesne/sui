@@ -1,6 +1,10 @@
 // Copyright (c) 2022, Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::net::SocketAddr;
+use std::str::FromStr;
+use std::{collections::BTreeMap, sync::Arc};
+
 use futures::future;
 use jsonrpsee::core::client::{Client, ClientT, Subscription, SubscriptionClientT};
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
@@ -11,22 +15,6 @@ use move_core_types::identifier::Identifier;
 use move_core_types::language_storage::ModuleId;
 use move_core_types::value::MoveStructLayout;
 use prometheus::Registry;
-use std::net::SocketAddr;
-use std::str::FromStr;
-use std::{collections::BTreeMap, sync::Arc};
-use sui_sdk::{ClientType, SuiClient};
-use sui_types::base_types::{ObjectRef, SequenceNumber};
-use sui_types::event::TransferType;
-use sui_types::object::{Object, ObjectRead, Owner, PastObjectRead};
-use sui_types::sui_framework_address_concat_string;
-use test_utils::authority::test_and_configure_authority_configs;
-use test_utils::messages::{
-    get_gas_object_with_wallet_context, make_transfer_object_transaction_with_wallet_context,
-};
-use test_utils::transaction::{
-    create_devnet_nft, delete_devnet_nft, increment_counter,
-    publish_basics_package_and_make_counter, transfer_coin,
-};
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 use tokio::time::{sleep, Duration};
@@ -37,20 +25,33 @@ use sui_json_rpc_types::{
     SuiEvent, SuiEventEnvelope, SuiEventFilter, SuiExecuteTransactionResponse, SuiExecutionStatus,
     SuiMoveStruct, SuiMoveValue, SuiTransactionFilter, SuiTransactionResponse,
 };
+use sui_macros::*;
 use sui_node::SuiNode;
+use sui_sdk::{ClientType, SuiClient};
 use sui_swarm::memory::Swarm;
+use sui_types::base_types::{ObjectRef, SequenceNumber};
+use sui_types::event::TransferType;
+use sui_types::filter::TransactionQueryCriteria;
 use sui_types::messages::{
     ExecuteTransactionRequest, ExecuteTransactionRequestType, ExecuteTransactionResponse,
 };
+use sui_types::object::{Object, ObjectRead, Owner, PastObjectRead};
+use sui_types::sui_framework_address_concat_string;
 use sui_types::{
     base_types::{ObjectID, SuiAddress, TransactionDigest},
     messages::TransactionInfoRequest,
 };
+use test_utils::authority::test_and_configure_authority_configs;
 use test_utils::messages::make_transactions_with_wallet_context;
+use test_utils::messages::{
+    get_gas_object_with_wallet_context, make_transfer_object_transaction_with_wallet_context,
+};
 use test_utils::network::setup_network_and_wallet;
+use test_utils::transaction::{
+    create_devnet_nft, delete_devnet_nft, increment_counter,
+    publish_basics_package_and_make_counter, transfer_coin,
+};
 use test_utils::transaction::{wait_for_all_txes, wait_for_tx};
-
-use sui_macros::*;
 
 #[sui_test]
 async fn test_full_node_follows_txes() -> Result<(), anyhow::Error> {
@@ -117,10 +118,14 @@ async fn test_full_node_move_function_index() -> Result<(), anyhow::Error> {
     wait_for_tx(digest, node.state().clone()).await;
     let txes = node
         .state()
-        .get_transactions_by_move_function(
-            package_ref.0,
-            Some("counter".to_string()),
-            Some("increment".to_string()),
+        .get_transactions(
+            TransactionQueryCriteria::MoveFunction {
+                package: package_ref.0,
+                module: Some("counter".to_string()),
+                function: Some("increment".to_string()),
+            },
+            None,
+            None,
         )
         .await?;
 
@@ -129,7 +134,15 @@ async fn test_full_node_move_function_index() -> Result<(), anyhow::Error> {
 
     let txes = node
         .state()
-        .get_transactions_by_move_function(package_ref.0, None, None)
+        .get_transactions(
+            TransactionQueryCriteria::MoveFunction {
+                package: package_ref.0,
+                module: None,
+                function: None,
+            },
+            None,
+            None,
+        )
         .await?;
 
     // 2 transactions in the package i.e create and increment counter
@@ -139,7 +152,15 @@ async fn test_full_node_move_function_index() -> Result<(), anyhow::Error> {
     eprint!("start...");
     let txes = node
         .state()
-        .get_transactions_by_move_function(package_ref.0, Some("counter".to_string()), None)
+        .get_transactions(
+            TransactionQueryCriteria::MoveFunction {
+                package: package_ref.0,
+                module: Some("counter".to_string()),
+                function: None,
+            },
+            None,
+            None,
+        )
         .await?;
 
     // 2 transactions in the package i.e publish and increment
@@ -163,7 +184,13 @@ async fn test_full_node_indexes() -> Result<(), anyhow::Error> {
 
     let txes = node
         .state()
-        .get_transactions_by_input_object(transferred_object)
+        .get_transactions(
+            TransactionQueryCriteria::InputObject {
+                object_id: transferred_object,
+            },
+            None,
+            None,
+        )
         .await?;
 
     assert_eq!(txes.len(), 1);
@@ -171,27 +198,61 @@ async fn test_full_node_indexes() -> Result<(), anyhow::Error> {
 
     let txes = node
         .state()
-        .get_transactions_by_mutated_object(transferred_object)
+        .get_transactions(
+            TransactionQueryCriteria::MutatedObject {
+                object_id: transferred_object,
+            },
+            None,
+            None,
+        )
         .await?;
     assert_eq!(txes.len(), 1);
     assert_eq!(txes[0].1, digest);
 
-    let txes = node.state().get_transactions_from_addr(sender).await?;
+    let txes = node
+        .state()
+        .get_transactions(
+            TransactionQueryCriteria::FromAddress { address: sender },
+            None,
+            None,
+        )
+        .await?;
     assert_eq!(txes.len(), 1);
     assert_eq!(txes[0].1, digest);
 
-    let txes = node.state().get_transactions_to_addr(receiver).await?;
+    let txes = node
+        .state()
+        .get_transactions(
+            TransactionQueryCriteria::ToAddress { address: receiver },
+            None,
+            None,
+        )
+        .await?;
     assert_eq!(txes.len(), 1);
     assert_eq!(txes[0].1, digest);
 
     // Note that this is also considered a tx to the sender, because it mutated
     // one or more of the sender's objects.
-    let txes = node.state().get_transactions_to_addr(sender).await?;
+    let txes = node
+        .state()
+        .get_transactions(
+            TransactionQueryCriteria::ToAddress { address: sender },
+            None,
+            None,
+        )
+        .await?;
     assert_eq!(txes.len(), 1);
     assert_eq!(txes[0].1, digest);
 
     // No transactions have originated from the receiver
-    let txes = node.state().get_transactions_from_addr(receiver).await?;
+    let txes = node
+        .state()
+        .get_transactions(
+            TransactionQueryCriteria::FromAddress { address: receiver },
+            None,
+            None,
+        )
+        .await?;
     assert_eq!(txes.len(), 0);
 
     // timestamp is recorded
@@ -594,7 +655,13 @@ async fn test_full_node_event_read_api_ok() -> Result<(), anyhow::Error> {
 
     let txes = node
         .state()
-        .get_transactions_by_input_object(transferred_object)
+        .get_transactions(
+            TransactionQueryCriteria::InputObject {
+                object_id: transferred_object,
+            },
+            None,
+            None,
+        )
         .await?;
 
     assert_eq!(txes.len(), 1);
