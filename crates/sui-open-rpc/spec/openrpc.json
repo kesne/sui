@@ -1804,7 +1804,7 @@
           "name": "Full Node API"
         }
       ],
-      "description": "Return list of transactions for a specified input object.",
+      "description": "Return list of transactions for a specified query criteria.",
       "params": [
         {
           "name": "query",
@@ -1832,25 +1832,10 @@
         }
       ],
       "result": {
-        "name": "Vec<(TxSeqNumber,TransactionDigest)>",
+        "name": "TransactionsPage",
         "required": true,
         "schema": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": [
-              {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              {
-                "$ref": "#/components/schemas/TransactionDigest"
-              }
-            ],
-            "maxItems": 2,
-            "minItems": 2
-          }
+          "$ref": "#/components/schemas/Page_for_Tuple_of_uint64_and_TransactionDigest_and_uint64"
         }
       }
     },
@@ -3644,6 +3629,40 @@
             "additionalProperties": false
           }
         ]
+      },
+      "Page_for_Tuple_of_uint64_and_TransactionDigest_and_uint64": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": [
+                {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                {
+                  "$ref": "#/components/schemas/TransactionDigest"
+                }
+              ],
+              "maxItems": 2,
+              "minItems": 2
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        }
       },
       "Pay": {
         "type": "object",

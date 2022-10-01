@@ -17,7 +17,7 @@ use sui_core::gateway_state::TxSeqNumber;
 use sui_json_rpc_types::{
     GetObjectDataResponse, GetPastObjectDataResponse, MoveFunctionArgType, ObjectValueKind, Page,
     SuiMoveNormalizedFunction, SuiMoveNormalizedModule, SuiMoveNormalizedStruct, SuiObjectInfo,
-    SuiTransactionEffects, SuiTransactionQueryCriteria, SuiTransactionResponse,
+    SuiTransactionEffects, SuiTransactionQueryCriteria, SuiTransactionResponse, TransactionsPage,
 };
 use sui_open_rpc::Module;
 use sui_types::base_types::SequenceNumber;
@@ -266,7 +266,7 @@ impl RpcFullNodeReadApiServer for FullNodeApi {
         query: SuiTransactionQueryCriteria,
         cursor: Option<TxSeqNumber>,
         limit: Option<usize>,
-    ) -> RpcResult<Page<(TxSeqNumber, TransactionDigest), TxSeqNumber>> {
+    ) -> RpcResult<TransactionsPage> {
         let limit = limit.unwrap_or(MAX_RESULT_SIZE);
         let mut data = self
             .state

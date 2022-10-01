@@ -8,11 +8,11 @@ use jsonrpsee_proc_macros::rpc;
 use sui_json::SuiJsonValue;
 use sui_json_rpc_types::{
     GetObjectDataResponse, GetPastObjectDataResponse, GetRawObjectDataResponse,
-    MoveFunctionArgType, Page, RPCTransactionRequestParams, SuiEventEnvelope, SuiEventFilter,
+    MoveFunctionArgType, RPCTransactionRequestParams, SuiEventEnvelope, SuiEventFilter,
     SuiExecuteTransactionResponse, SuiGasCostSummary, SuiMoveNormalizedFunction,
     SuiMoveNormalizedModule, SuiMoveNormalizedStruct, SuiObjectInfo, SuiTransactionEffects,
     SuiTransactionFilter, SuiTransactionQueryCriteria, SuiTransactionResponse, SuiTypeTag,
-    TransactionBytes, TxSeqNumber,
+    TransactionBytes, TransactionsPage, TxSeqNumber,
 };
 use sui_open_rpc_macros::open_rpc;
 use sui_types::base_types::{ObjectID, SequenceNumber, SuiAddress, TransactionDigest};
@@ -179,7 +179,7 @@ pub trait RpcFullNodeReadApi {
         query: SuiTransactionQueryCriteria,
         cursor: Option<TxSeqNumber>,
         limit: Option<usize>,
-    ) -> RpcResult<Page<(TxSeqNumber, TransactionDigest), TxSeqNumber>>;
+    ) -> RpcResult<TransactionsPage>;
 
     /// Note there is no software-level guarantee/SLA that objects with past versions
     /// can be retrieved by this API, even if the object and version exists/existed.
