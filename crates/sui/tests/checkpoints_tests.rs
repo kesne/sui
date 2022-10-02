@@ -191,7 +191,8 @@ async fn end_to_end() {
     let handles = spawn_test_authorities(input_objects, &configs).await;
 
     // Make an authority's aggregator.
-    let aggregator = test_authority_aggregator(&configs, handles[0].state().epoch_store().clone());
+    let aggregator =
+        test_authority_aggregator(&configs, handles[0].state().committee_store().clone());
 
     spawn_checkpoint_processes(&aggregator, &handles).await;
 
@@ -215,7 +216,8 @@ async fn end_to_end_with_one_byzantine() {
     let (_first, rest) = handles[..].split_at(1);
 
     // Make an authority's aggregator.
-    let aggregator = test_authority_aggregator(&configs, handles[0].state().epoch_store().clone());
+    let aggregator =
+        test_authority_aggregator(&configs, handles[0].state().committee_store().clone());
 
     // one authority does not participate in checkpointing
     spawn_checkpoint_processes(&aggregator, rest).await;
@@ -244,7 +246,8 @@ async fn checkpoint_with_shared_objects() {
     let handles = spawn_test_authorities(initialization_objects, &configs).await;
 
     // Make an authority's aggregator.
-    let aggregator = test_authority_aggregator(&configs, handles[0].state().epoch_store().clone());
+    let aggregator =
+        test_authority_aggregator(&configs, handles[0].state().committee_store().clone());
 
     spawn_checkpoint_processes(&aggregator, &handles).await;
 
