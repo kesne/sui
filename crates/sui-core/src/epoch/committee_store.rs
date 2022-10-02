@@ -6,10 +6,11 @@ use std::path::PathBuf;
 use sui_storage::default_db_options;
 use sui_types::base_types::ObjectID;
 use sui_types::committee::{Committee, EpochId};
-use sui_types::error::SuiResult;
+use sui_types::error::{SuiError, SuiResult};
 use typed_store::rocks::DBMap;
 use typed_store::traits::TypedStoreDebug;
 
+use sui_types::fp_ensure;
 use typed_store::Map;
 use typed_store_derive::DBMapUtils;
 
@@ -41,13 +42,23 @@ impl CommitteeStore {
     pub fn new_for_testing(genesis_committee: &Committee) -> Self {
         let dir = std::env::temp_dir();
         let path = dir.join(format!("DB_{:?}", ObjectID::random()));
-        std::fs::create_dir(&path).unwrap();
         Self::new(path, genesis_committee, None)
     }
 
     pub fn init_genesis_epoch(&self, genesis_committee: Committee) -> SuiResult {
         assert_eq!(genesis_committee.epoch, 0);
         self.committee_map.insert(&0, &genesis_committee)?;
+        Ok(())
+    }
+
+    pub fn insert_new_committee(&self, new_committee: &Committee) -> SuiResult {
+        let latest_committee = self.get_latest_committee();
+        fp_ensure!(
+            latest_committee.epoch + 1 == new_committee.epoch,
+            SuiError::from("Unexpected new epoch number")
+        );
+        self.committee_map
+            .insert(&new_committee.epoch, new_committee)?;
         Ok(())
     }
 
