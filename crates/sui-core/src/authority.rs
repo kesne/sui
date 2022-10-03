@@ -1598,14 +1598,6 @@ impl AuthorityState {
         QueryHelpers::get_total_transaction_number(&self.database)
     }
 
-    pub fn get_transactions_in_range(
-        &self,
-        start: TxSequenceNumber,
-        end: TxSequenceNumber,
-    ) -> Result<Vec<(TxSequenceNumber, TransactionDigest)>, anyhow::Error> {
-        QueryHelpers::get_transactions_in_range(&self.database, start, end)
-    }
-
     pub fn get_recent_transactions(
         &self,
         count: u64,
@@ -1629,13 +1621,13 @@ impl AuthorityState {
         }
     }
 
-    pub async fn get_transactions(
+    pub fn get_transactions(
         &self,
-        filter: TransactionQueryCriteria,
+        query: TransactionQueryCriteria,
         cursor: Option<TxSequenceNumber>,
         limit: Option<usize>,
     ) -> Result<Vec<(TxSequenceNumber, TransactionDigest)>, anyhow::Error> {
-        Ok(match filter {
+        Ok(match query {
             TransactionQueryCriteria::MoveFunction {
                 package,
                 module,
