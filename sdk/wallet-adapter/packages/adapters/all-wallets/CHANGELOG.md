@@ -1,5 +1,12 @@
 # @mysten/wallet-adapter-all-wallets
 
+## 0.1.1
+
+### Patch Changes
+
+- @mysten/wallet-adapter-mock-wallet@0.1.1
+- @mysten/wallet-adapter-sui-wallet@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
